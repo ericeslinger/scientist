@@ -1,0 +1,11 @@
+{
+  "name": "scientist",
+  "version": "0.0.1",
+  "description": "A simple throttling system",
+  "main": "dist/index.js",
+  "scripts": {
+    "test": "gulp test"
+  },
+  "author": "Eric Eslinger",
+  "license": "MIT"
+}
