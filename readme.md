@@ -1,10 +1,10 @@
-# Scientist
+# Venkman
 A simple, redis-based throttle-backoff system.
 
 Usage:
 
 ```
-require { BasicThrottle } from 'scientist';
+import { BasicThrottle } from 'venkman';
 const testThrottle = new BasicThrottle({
   initialWindow: 20,
   keyGenerator: (i) => `example:${i}`,
