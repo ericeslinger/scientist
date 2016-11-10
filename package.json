@@ -1,5 +1,5 @@
 {
-  "name": "scientist",
+  "name": "venkman",
   "version": "1.0.0",
   "description": "A simple throttling system",
   "main": "dist/index.js",
@@ -8,10 +8,10 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ericeslinger/scientist.git"
+    "url": "git+https://github.com/kstf/venkman.git"
   },
   "bugs": {
-    "url": "https://github.com/ericeslinger/scientist/issues"
+    "url": "https://github.com/kstf/venkman/issues"
   },
   "author": "Eric Eslinger",
   "license": "MIT",
