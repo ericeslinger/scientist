@@ -1,4 +1,4 @@
-# Scientist
+# Venkman
 A simple, redis-based throttle-backoff system.
 
 Usage:
