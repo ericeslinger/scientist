@@ -46,16 +46,16 @@ export class BasicThrottle {
   // on initial set, expire after initialWindow seconds.
   // if extendWindow, extend the expiry that many seconds per access
 
-  backoff(state) {
-    return this[$redis].incrAsync(this.keyGenerator(state))
+  backoff(...args) {
+    return this[$redis].incrAsync(this.keyGenerator(...args))
     .then((val) => {
       if (val === 1) {
-        return this[$redis].expireAsync(this.keyGenerator(state), this.options.initialWindow)
+        return this[$redis].expireAsync(this.keyGenerator(...args), this.options.initialWindow)
         .then(() => val);
       } else if (this.options.extendWindow) {
-        return this[$redis].ttlAsync(this.keyGenerator(state))
+        return this[$redis].ttlAsync(this.keyGenerator(...args))
         .then((ttl) => {
-          return this[$redis].expireAsync(this.keyGenerator(state), ttl + this.options.extendWindow);
+          return this[$redis].expireAsync(this.keyGenerator(...args), ttl + this.options.extendWindow);
         }).then(() => val);
       } else {
         return val;
@@ -63,7 +63,7 @@ export class BasicThrottle {
     }).then((val) => {
       if (val > this.options.max) {
         if (this.options.permaBan) {
-          return this[$redis].expireAsync(this.keyGenerator(state), this.options.permaBan)
+          return this[$redis].expireAsync(this.keyGenerator(...args), this.options.permaBan)
           .then(() => false);
         }
         return false;
