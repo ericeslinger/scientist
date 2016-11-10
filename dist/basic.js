@@ -66,17 +66,21 @@ var BasicThrottle = exports.BasicThrottle = function () {
 
   _createClass(BasicThrottle, [{
     key: 'backoff',
-    value: function backoff(state) {
+    value: function backoff() {
       var _this = this;
 
-      return this[$redis].incrAsync(this.keyGenerator(state)).then(function (val) {
+      for (var _len = arguments.length, args = Array(_len), _key = 0; _key < _len; _key++) {
+        args[_key] = arguments[_key];
+      }
+
+      return this[$redis].incrAsync(this.keyGenerator.apply(this, args)).then(function (val) {
         if (val === 1) {
-          return _this[$redis].expireAsync(_this.keyGenerator(state), _this.options.initialWindow).then(function () {
+          return _this[$redis].expireAsync(_this.keyGenerator.apply(_this, args), _this.options.initialWindow).then(function () {
             return val;
           });
         } else if (_this.options.extendWindow) {
-          return _this[$redis].ttlAsync(_this.keyGenerator(state)).then(function (ttl) {
-            return _this[$redis].expireAsync(_this.keyGenerator(state), ttl + _this.options.extendWindow);
+          return _this[$redis].ttlAsync(_this.keyGenerator.apply(_this, args)).then(function (ttl) {
+            return _this[$redis].expireAsync(_this.keyGenerator.apply(_this, args), ttl + _this.options.extendWindow);
           }).then(function () {
             return val;
           });
@@ -86,7 +90,7 @@ var BasicThrottle = exports.BasicThrottle = function () {
       }).then(function (val) {
         if (val > _this.options.max) {
           if (_this.options.permaBan) {
-            return _this[$redis].expireAsync(_this.keyGenerator(state), _this.options.permaBan).then(function () {
+            return _this[$redis].expireAsync(_this.keyGenerator.apply(_this, args), _this.options.permaBan).then(function () {
               return false;
             });
           }
