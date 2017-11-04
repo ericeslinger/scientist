@@ -3,7 +3,7 @@
     "allowSyntheticDefaultImports": true,
     "declaration": false,
     "types": ["node", "mocha"],
-    "lib": ["dom", "es6"],
+    "lib": ["dom", "es2017"],
     "module": "es2015",
     "declaration": true,
     "moduleResolution": "node",

@@ -4,9 +4,9 @@ export interface ThrottleOptions<T> {
     redis?: Redis.ClientOpts;
     keyGenerator: (T) => string;
     initialWindow: number;
-    extendWindow: number;
+    extendWindow?: number;
     max: number;
-    permaBan: number;
+    permaBan?: number;
 }
 export declare class BasicThrottle<T> {
     options: ThrottleOptions<T>;
