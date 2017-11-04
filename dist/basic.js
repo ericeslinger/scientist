@@ -1,118 +1,77 @@
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
-  value: true
+    value: true
 });
 exports.BasicThrottle = undefined;
-
-var _createClass = function () { function defineProperties(target, props) { for (var i = 0; i < props.length; i++) { var descriptor = props[i]; descriptor.enumerable = descriptor.enumerable || false; descriptor.configurable = true; if ("value" in descriptor) descriptor.writable = true; Object.defineProperty(target, descriptor.key, descriptor); } } return function (Constructor, protoProps, staticProps) { if (protoProps) defineProperties(Constructor.prototype, protoProps); if (staticProps) defineProperties(Constructor, staticProps); return Constructor; }; }();
 
 var _redis = require('redis');
 
 var Redis = _interopRequireWildcard(_redis);
 
-var _bluebird = require('bluebird');
-
-var Bluebird = _interopRequireWildcard(_bluebird);
+var _util = require('util');
 
 function _interopRequireWildcard(obj) { if (obj && obj.__esModule) { return obj; } else { var newObj = {}; if (obj != null) { for (var key in obj) { if (Object.prototype.hasOwnProperty.call(obj, key)) newObj[key] = obj[key]; } } newObj.default = obj; return newObj; } }
 
-function _classCallCheck(instance, Constructor) { if (!(instance instanceof Constructor)) { throw new TypeError("Cannot call a class as a function"); } }
-
-var RedisService = Bluebird.promisifyAll(Redis);
-
-var $redis = Symbol('$redis');
-
-var BasicThrottle = exports.BasicThrottle = function () {
-  function BasicThrottle() {
-    var options = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : {};
-
-    _classCallCheck(this, BasicThrottle);
-
-    if (options.redisInstance === undefined) {
-      var redisOptions = Object.assign({}, {
-        port: 6379,
-        host: 'localhost',
-        db: 0,
-        retry_strategy: function retry_strategy(o) {
-          if (o.error.code === 'ECONNREFUSED') {
-            // End reconnecting on a specific error and flush all commands with a individual error
-            return new Error('The server refused the connection');
-          }
-          if (o.total_retry_time > 1000 * 60 * 60) {
-            // End reconnecting after a specific timeout and flush all commands with a individual error
-            return new Error('Retry time exhausted');
-          }
-          if (o.times_connected > 10) {
-            // End reconnecting with built in error
-            return undefined;
-          }
-          // reconnect after
-          return Math.max(o.attempt * 100, 3000);
-        }
-      }, options.redis);
-      this[$redis] = RedisService.createClient(redisOptions);
-    } else {
-      this[$redis] = options.redisInstance;
-    }
-    this.keyGenerator = options.keyGenerator;
-    this.options = Object.assign({}, options);
-    delete this.options.redis;
-    delete this.options.keyGenerator;
-  }
-
-  // on initial set, expire after initialWindow seconds.
-  // if extendWindow, extend the expiry that many seconds per access
-
-  _createClass(BasicThrottle, [{
-    key: 'backoff',
-    value: function backoff() {
-      var _this = this;
-
-      for (var _len = arguments.length, args = Array(_len), _key = 0; _key < _len; _key++) {
-        args[_key] = arguments[_key];
-      }
-
-      return this[$redis].incrAsync(this.keyGenerator.apply(this, args)).then(function (val) {
-        if (val === 1) {
-          return _this[$redis].expireAsync(_this.keyGenerator.apply(_this, args), _this.options.initialWindow).then(function () {
-            return val;
-          });
-        } else if (_this.options.extendWindow) {
-          return _this[$redis].ttlAsync(_this.keyGenerator.apply(_this, args)).then(function (ttl) {
-            return _this[$redis].expireAsync(_this.keyGenerator.apply(_this, args), ttl + _this.options.extendWindow);
-          }).then(function () {
-            return val;
-          });
+const $redis = Symbol('$redis');
+class BasicThrottle {
+    constructor(options) {
+        this.options = options;
+        if (options.redisInstance === undefined) {
+            const redisOptions = Object.assign({}, {
+                port: 6379,
+                host: 'localhost',
+                db: 0,
+                retry_strategy: o => {
+                    if (o.error.code === 'ECONNREFUSED') {
+                        // End reconnecting on a specific error and flush all commands with a individual error
+                        return new Error('The server refused the connection');
+                    }
+                    if (o.total_retry_time > 1000 * 60 * 60) {
+                        // End reconnecting after a specific timeout and flush all commands with a individual error
+                        return new Error('Retry time exhausted');
+                    }
+                    if (o.times_connected > 10) {
+                        // End reconnecting with built in error
+                        return undefined;
+                    }
+                    // reconnect after
+                    return Math.max(o.attempt * 100, 3000);
+                }
+            }, options.redis);
+            this.redis = Redis.createClient(redisOptions);
         } else {
-          return val;
+            this.redis = options.redisInstance;
         }
-      }).then(function (val) {
-        if (val > _this.options.max) {
-          if (_this.options.permaBan) {
-            return _this[$redis].expireAsync(_this.keyGenerator.apply(_this, args), _this.options.permaBan).then(function () {
-              return false;
-            });
-          }
-          return false;
+        this.keyGenerator = options.keyGenerator;
+        this.incr = (0, _util.promisify)(this.redis.incr.bind(this.redis));
+        this.expire = (0, _util.promisify)(this.redis.expire.bind(this.redis));
+        this.ttl = (0, _util.promisify)(this.redis.ttl.bind(this.redis));
+    }
+    // on initial set, expire after initialWindow seconds.
+    // if extendWindow, extend the expiry that many seconds per access
+    async backoff(arg) {
+        const total = await this.incr(this.keyGenerator(arg));
+        if (total === 1) {
+            await this.expire(this.keyGenerator(arg), this.options.initialWindow);
+        } else if (this.options.extendWindow) {
+            const ttl = await this.ttl(this.keyGenerator(arg));
+            await this.expire(this.keyGenerator(arg), ttl + this.options.extendWindow);
+        }
+        if (total > this.options.max) {
+            if (this.options.permaBan) {
+                await this.expire(this.keyGenerator(arg), this.options.permaBan);
+            }
+            return false;
         } else {
-          return true;
+            return true;
         }
-      });
     }
-  }, {
-    key: 'close',
-    value: function close() {
-      var _this2 = this;
-
-      this.backoff = function () {
-        throw new Error('Cannot access closed throttle');
-      };
-      return this[$redis].quitAsync().then(function () {
-        delete _this2[$redis];
-      });
+    close() {
+        this.backoff = () => {
+            throw new Error('Cannot access closed throttle');
+        };
+        this.redis.quit();
     }
-  }]);
-
-  return BasicThrottle;
-}();
+}
+exports.BasicThrottle = BasicThrottle;
