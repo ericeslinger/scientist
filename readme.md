@@ -1,13 +1,17 @@
 # Venkman
 A simple, redis-based throttle-backoff system.
 
+> Back off man, I'm a Scientist.
+> 
+> -Peter Venkman, Ghostbusters
+
 Usage:
 
 ```
 import { BasicThrottle } from 'venkman';
 const testThrottle = new BasicThrottle({
   initialWindow: 20,
-  keyGenerator: (i) => `example:${i}`,
+  keyGenerator: ({ userId, messageId }) => `example:${userId}:{messageId}`,
   max: 3,
 })
 
@@ -23,7 +27,7 @@ testThrottle.backoff('test').then((v) => v === false);
 
 *max* (required): the number of requests allowed before rejecting future requests.
 
-*keyGenerator* (required): should return a string when called with the args of backoff, used to determine which throttle the BasicThrottle is using.
+*keyGenerator* (required): should return a string when called with the backoff argument, used to determine which throttle the BasicThrottle is using.
 
 *extendWindow*: if present, the ttl on the throttle is extended by this value in seconds for every request after the first.
 
@@ -35,7 +39,7 @@ testThrottle.backoff('test').then((v) => v === false);
 
 ## BasicThrottle methods:
 
-backoff(...args): check to see if the throttle named by the keyGenerator callback is over max. Returns a promise that resolves to either true (at or under max) or false (over max).
+backoff<T>(arg: T): check to see if the throttle named by the keyGenerator callback is over max. Returns a promise that resolves to either true (at or under max) or false (over max).
 
 close(): cleans up the redis instance. Call this if you didn't pass your own redis instance in and don't want to leak resources.
 
